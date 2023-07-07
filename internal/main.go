@@ -25,6 +25,8 @@ func Main() {
 	}
 
 	go func() {
+		Usage()
+		fmt.Println("Exit with ctrl-c.")
 		for {
 			expr := r()
 			res := e(expr)
