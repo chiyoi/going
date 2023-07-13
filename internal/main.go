@@ -9,9 +9,8 @@ import (
 
 func Usage() {
 	fmt.Println("Go playground.")
-	fmt.Println("Code your program (end with ctrl-d), and I will")
-	fmt.Println("fill it into the main function, add necessary")
-	fmt.Println("imports and run it.")
+	fmt.Println("Code your program, and I will fill it into the main function,")
+	fmt.Println("add necessary imports and run it.")
 }
 
 func Main() {

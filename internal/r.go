@@ -11,7 +11,7 @@ func r() string {
 	var buf strings.Builder
 	sc := bufio.NewScanner(os.Stdin)
 	fmt.Println("<--")
-	for sc.Scan() {
+	for sc.Scan() && sc.Text() != "" {
 		fmt.Fprintln(&buf, sc.Text())
 	}
 	fmt.Println("-->")
