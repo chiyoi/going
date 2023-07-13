@@ -1,7 +1,9 @@
 usage() {
     echo "scripts:"
-    echo "./scripts run"
-    echo "./scripts install"
+    echo "scripts.sh run"
+    echo "    Test run."
+    echo "scripts.sh install"
+    echo "    Install to the default go binary directory."
 }
 
 run() {
