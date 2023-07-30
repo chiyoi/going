@@ -1,11 +1,12 @@
 package internal
 
 import (
+	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
-	"strings"
 )
 
 const tmplMain = `
@@ -16,55 +17,52 @@ func main() {
 }
 `
 
-func e(expr string) string {
-	f, err := os.CreateTemp(os.TempDir(), "going-*.go")
-	if err != nil {
-		fmt.Println("Unknown error:", err)
-		os.Exit(1)
-	}
-	defer os.Remove(f.Name())
-	defer f.Close()
+func e(expr string) (context.Context, io.Reader) {
+	ctx, cancel := context.WithCancel(context.Background())
+	var buf bytes.Buffer
 
-	fmt.Fprintf(
-		f,
-		tmplMain,
-		expr,
-	)
+	go func() {
+		f, err := os.CreateTemp(os.TempDir(), "going-*.go")
+		if err != nil {
+			fmt.Println("Unknown error:", err)
+			os.Exit(1)
+		}
+		defer os.Remove(f.Name())
+		defer f.Close()
 
-	var buf strings.Builder
-	cmd := exec.Command("gopls", "imports", f.Name())
-	cmd.Stdout = &buf
-	cmd.Stderr = &buf
-	if err := cmd.Run(); err != nil {
-		return fmt.Sprintf(
-			"Error occurred while preprocessing: %s\nOutput: %s\n",
-			err,
-			&buf,
+		fmt.Fprintf(
+			f,
+			tmplMain,
+			expr,
 		)
-	}
+		f.Seek(0, io.SeekStart)
 
-	if err := func() (err error) {
-		if _, err = f.Seek(0, io.SeekStart); err != nil {
+		cmd := exec.Command("gopls", "imports", f.Name())
+		cmd.Stdout = f
+		cmd.Stderr = &buf
+		if err := cmd.Run(); err != nil {
+			fmt.Fprintf(
+				&buf,
+				"Error occurred while preprocessing: %s\nOutput: %s\n",
+				err,
+				&buf,
+			)
+			cancel()
 			return
 		}
-		return f.Truncate(0)
-	}(); err != nil {
-		fmt.Println("Unknown error:", err)
-		os.Exit(1)
-	}
-	fmt.Fprint(f, buf.String())
 
-	buf.Reset()
-	cmd = exec.Command("go", "run", f.Name())
-	cmd.Stdout = &buf
-	cmd.Stderr = &buf
-	if err := cmd.Run(); err != nil {
-		return fmt.Sprintf(
-			"Error occurred: %s\nOutput:\n%s",
-			err,
-			&buf,
-		)
-	}
-
-	return buf.String()
+		cmd = exec.Command("go", "run", f.Name())
+		cmd.Stdout = &buf
+		cmd.Stderr = &buf
+		if err := cmd.Run(); err != nil {
+			fmt.Fprintf(
+				&buf,
+				"Error occurred: %s\nOutput:\n%s",
+				err,
+				&buf,
+			)
+		}
+		cancel()
+	}()
+	return ctx, &buf
 }

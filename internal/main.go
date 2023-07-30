@@ -28,8 +28,8 @@ func Main() {
 		fmt.Println("Exit with ctrl-c.")
 		for {
 			expr := r()
-			res := e(expr)
-			p(res)
+			ctx, r := e(expr)
+			p(ctx, r)
 		}
 	}()
 
