@@ -1,4 +1,4 @@
-package internal
+package repl
 
 import (
 	"flag"
@@ -20,7 +20,7 @@ func Usage() {
 	fmt.Println("  -e, -expr - Single expression mode.")
 }
 
-func Main() {
+func MainLoop() {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 

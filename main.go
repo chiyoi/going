@@ -1,7 +1,7 @@
 package main
 
-import "github.com/chiyoi/going/internal"
+import "github.com/chiyoi/going/repl"
 
 func main() {
-	internal.Main()
+	repl.MainLoop()
 }
