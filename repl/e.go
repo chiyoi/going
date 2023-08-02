@@ -16,9 +16,13 @@ func main() {
 }
 `
 
-func e(expr string) chan string {
-	out := make(chan string, 1)
+func e(expr string) (out chan string, cancel *func() error) {
+	out = make(chan string, 1)
+	cancel = new(func() error)
 	go func() {
+		defer close(out)
+		defer func() { *cancel = nil }()
+
 		f, err := os.CreateTemp(os.TempDir(), "going-*.go")
 		if err != nil {
 			fmt.Println("Unknown error:", err)
@@ -35,21 +39,21 @@ func e(expr string) chan string {
 		cmd.Stderr = ChanWriter(out)
 		if err := cmd.Run(); err != nil {
 			out <- fmt.Sprintf("Error occurred while preprocessing: %s\n", err)
-			close(out)
 			return
 		}
 
 		cmd = exec.Command("go", "run", f.Name())
+		*cancel = func() error {
+			return cmd.Process.Kill()
+		}
 		cmd.Stdout = ChanWriter(out)
 		cmd.Stderr = ChanWriter(out)
 		if err := cmd.Run(); err != nil {
 			out <- fmt.Sprintf("Error occurred: %s\n", err)
-			close(out)
 			return
 		}
-		close(out)
 	}()
-	return out
+	return
 }
 
 type ChanWriter chan string
