@@ -1,8 +1,7 @@
 package internal
 
 import (
-	"bytes"
-	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -17,10 +16,8 @@ func main() {
 }
 `
 
-func e(expr string) (context.Context, io.Reader) {
-	ctx, cancel := context.WithCancel(context.Background())
-	var buf bytes.Buffer
-
+func e(expr string) chan string {
+	out := make(chan string, 1)
 	go func() {
 		f, err := os.CreateTemp(os.TempDir(), "going-*.go")
 		if err != nil {
@@ -30,39 +27,38 @@ func e(expr string) (context.Context, io.Reader) {
 		defer os.Remove(f.Name())
 		defer f.Close()
 
-		fmt.Fprintf(
-			f,
-			tmplMain,
-			expr,
-		)
+		fmt.Fprintf(f, tmplMain, expr)
 		f.Seek(0, io.SeekStart)
 
 		cmd := exec.Command("gopls", "imports", f.Name())
 		cmd.Stdout = f
-		cmd.Stderr = &buf
+		cmd.Stderr = ChanWriter(out)
 		if err := cmd.Run(); err != nil {
-			fmt.Fprintf(
-				&buf,
-				"Error occurred while preprocessing: %s\nOutput: %s\n",
-				err,
-				&buf,
-			)
-			cancel()
+			out <- fmt.Sprintf("Error occurred while preprocessing: %s\n", err)
+			close(out)
 			return
 		}
 
 		cmd = exec.Command("go", "run", f.Name())
-		cmd.Stdout = &buf
-		cmd.Stderr = &buf
+		cmd.Stdout = ChanWriter(out)
+		cmd.Stderr = ChanWriter(out)
 		if err := cmd.Run(); err != nil {
-			fmt.Fprintf(
-				&buf,
-				"Error occurred: %s\nOutput:\n%s",
-				err,
-				&buf,
-			)
+			out <- fmt.Sprintf("Error occurred: %s\n", err)
+			close(out)
+			return
 		}
-		cancel()
+		close(out)
 	}()
-	return ctx, &buf
+	return out
+}
+
+type ChanWriter chan string
+
+func (cw ChanWriter) Write(p []byte) (n int, err error) {
+	select {
+	case cw <- string(p):
+		return len(p), nil
+	default:
+		return 0, errors.New("channel unavailable")
+	}
 }

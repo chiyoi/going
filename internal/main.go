@@ -7,10 +7,17 @@ import (
 	"os/signal"
 )
 
-func Usage() {
+func Welcome() {
 	fmt.Println("Go playground.")
 	fmt.Println("Code your program, and I will fill it into the main function,")
 	fmt.Println("add necessary imports and run it.")
+}
+
+func Usage() {
+	Welcome()
+	fmt.Println()
+	fmt.Println("Options:")
+	fmt.Println("  -e, -expr - Single expression mode.")
 }
 
 func Main() {
@@ -19,17 +26,27 @@ func Main() {
 
 	var fs flag.FlagSet
 	fs.Usage = Usage
+
+	em := fs.Bool("expr", false, "")
+	fs.BoolVar(em, "e", false, "")
+
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		return
 	}
 
 	go func() {
-		Usage()
+		Welcome()
 		fmt.Println("Exit with ctrl-c.")
 		for {
-			expr := r()
-			ctx, r := e(expr)
-			p(ctx, r)
+			var expr string
+			if *em {
+				expr = re()
+			} else {
+				expr = r()
+			}
+
+			res := e(expr)
+			p(res)
 		}
 	}()
 
