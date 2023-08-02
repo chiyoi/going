@@ -1,6 +1,6 @@
 # going
-Go interpreter.
-- Support multiple line mode and one-line expression mode.
+Go playground.
+- Support multiple statements mode and single expression mode.
 
 ---
 TODO
