@@ -2,12 +2,39 @@ package repl
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
 )
 
-func r() string {
+var (
+	ErrExit = errors.New("exit")
+	ErrSkip = errors.New("skip")
+)
+
+func r(multiple bool) (expr string, err error) {
+	if multiple {
+		expr = readLines()
+	} else {
+		expr = readLine()
+	}
+	expr = strings.Trim(expr, "\n ;")
+
+	if expr == "e" {
+		return "", ErrExit
+	}
+	if expr == "" {
+		return "", ErrSkip
+	}
+
+	if !multiple {
+		expr = fmt.Sprintf("fmt.Println(%s)", expr)
+	}
+	return
+}
+
+func readLines() string {
 	var buf strings.Builder
 	sc := bufio.NewScanner(os.Stdin)
 	fmt.Println(">--")
@@ -18,9 +45,9 @@ func r() string {
 	return buf.String()
 }
 
-func re() string {
+func readLine() string {
 	sc := bufio.NewScanner(os.Stdin)
 	fmt.Print("> ")
 	sc.Scan()
-	return fmt.Sprintf("fmt.Println(%s)", sc.Text())
+	return sc.Text()
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"syscall"
 )
 
 func Welcome() {
@@ -43,11 +44,15 @@ func MainLoop() {
 
 		fmt.Println("Exit with ctrl-c.")
 		for {
-			var expr string
-			if *m {
-				expr = r()
-			} else {
-				expr = re()
+			expr, err := r(*m)
+			switch err {
+			case ErrExit:
+				c <- syscall.SIGINT
+			case ErrSkip:
+				continue
+			case nil:
+			default:
+				panic(err)
 			}
 
 			var out chan string
@@ -64,8 +69,8 @@ func MainLoop() {
 			}
 		} else {
 			fmt.Println(sig)
-			fmt.Println("Bye.")
 			break
 		}
 	}
+	fmt.Println("Bye.")
 }
