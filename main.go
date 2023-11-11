@@ -1,7 +1,13 @@
 package main
 
-import "github.com/chiyoi/going/repl"
+import (
+	"os"
+
+	"github.com/chiyoi/apricot/sakana"
+	"github.com/chiyoi/going/repl"
+)
 
 func main() {
-	repl.MainLoop()
+	c := repl.Handler()
+	c.ServeArgs(sakana.Files{}, os.Args[1:])
 }

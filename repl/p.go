@@ -4,8 +4,6 @@ import (
 	"fmt"
 )
 
-func p(res chan string) {
-	for s := range res {
-		fmt.Print(s)
-	}
+func P(output string) {
+	fmt.Print(output)
 }
