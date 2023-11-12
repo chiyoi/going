@@ -49,7 +49,7 @@ func work(ctx context.Context, input chan []byte, showPrompt bool) (err error) {
 		return ErrSkip
 	}
 
-	output, err := E(signalCtx, expr)
+	commandOut, commandErr, clean, err := E(signalCtx, expr)
 	select {
 	case <-signalCtx.Done():
 		return ErrContinue
@@ -58,7 +58,16 @@ func work(ctx context.Context, input chan []byte, showPrompt bool) (err error) {
 	if err != nil {
 		return
 	}
+	defer clean()
 
-	P(output)
+	err = P(commandOut, commandErr)
+	select {
+	case <-signalCtx.Done():
+		return ErrContinue
+	default:
+	}
+	if err != nil {
+		return
+	}
 	return
 }

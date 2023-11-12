@@ -4,6 +4,16 @@ import (
 	"fmt"
 )
 
-func P(output string) {
-	fmt.Print(output)
+func P(commandOut chan []byte, commandErr chan error) error {
+	for {
+		select {
+		case out, more := <-commandOut:
+			if !more {
+				return nil
+			}
+			fmt.Print(string(out))
+		case err := <-commandErr:
+			return err
+		}
+	}
 }

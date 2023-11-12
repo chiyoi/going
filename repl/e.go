@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 )
@@ -16,12 +17,19 @@ func main() {
 }
 `
 
-func E(ctx context.Context, expr string) (output string, err error) {
+func E(ctx context.Context, expr string) (commandOut chan []byte, commandErr chan error, clean func(), err error) {
 	source, err := temporarySource(expr)
 	if err != nil {
 		return
 	}
-	defer os.Remove(source)
+	clean = func() {
+		os.Remove(source)
+	}
+	defer func() {
+		if err != nil {
+			clean()
+		}
+	}()
 
 	var errorBuffer bytes.Buffer
 	cmd := exec.CommandContext(ctx, "gopls", "imports", "-w", source)
@@ -38,19 +46,25 @@ func E(ctx context.Context, expr string) (output string, err error) {
 	}
 
 	errorBuffer.Reset()
+	commandOut = make(chan []byte)
+	commandErr = make(chan error)
 	cmd = exec.CommandContext(ctx, "go", "run", source)
+	cmd.Stdout = ChanWriter(commandOut)
 	cmd.Stderr = &errorBuffer
-	bs, err := cmd.Output()
-	output = string(bs)
-	select {
-	case <-ctx.Done():
-		return
-	default:
-	}
-	if err != nil {
-		err = fmt.Errorf("run error: %w\n%s", err, errorBuffer.String())
-		return
-	}
+	go func() {
+		defer close(commandOut)
+		defer close(commandErr)
+		err := cmd.Run()
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+		if err != nil {
+			commandErr <- fmt.Errorf("run error: %s\n%s", err, errorBuffer.String())
+			return
+		}
+	}()
 	return
 }
 
@@ -66,4 +80,13 @@ func temporarySource(expr string) (source string, err error) {
 		return
 	}
 	return f.Name(), nil
+}
+
+var _ io.Writer = (ChanWriter)(nil)
+
+type ChanWriter chan []byte
+
+func (c ChanWriter) Write(p []byte) (n int, err error) {
+	c <- p
+	return len(p), nil
 }
