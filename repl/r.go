@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -84,7 +85,7 @@ func R(ctx context.Context, input chan []byte, showPrompt bool) (expr string, er
 		}
 		if !flag && showPrompt {
 			fmt.Fprint(os.Stdout, ps2)
-			fmt.Fprint(os.Stdout, strings.Repeat("\t", len(bracketStack)))
+			fmt.Fprint(os.Stdout, strings.Repeat(" ", len(bracketStack)))
 		}
 	}
 
@@ -93,14 +94,14 @@ func R(ctx context.Context, input chan []byte, showPrompt bool) (expr string, er
 	return line, nil
 }
 
-func StartScanner() (input chan []byte) {
+func Scan(r io.Reader) (input chan []byte) {
 	input = make(chan []byte)
 	go func() {
-		sc := bufio.NewScanner(os.Stdin)
+		sc := bufio.NewScanner(r)
 		for {
 			if !sc.Scan() {
 				input <- nil
-				sc = bufio.NewScanner(os.Stdin)
+				sc = bufio.NewScanner(r)
 				continue
 			}
 			logs.Debug("Scanned.", "sc.Bytes():", sc.Bytes())
